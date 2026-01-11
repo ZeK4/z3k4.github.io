@@ -1,4 +1,9 @@
-export type TransactionType = 'income' | 'expense';
+
+export type TransactionType = 'income' | 'expense' | 'transfer';
+export type InvestmentAction = 'Market buy' | 'Market sell' | 'Dividend' | 'Deposit' | 'Withdrawal' | 'Interest on cash';
+export type ChartType = 'pie' | 'bar';
+export type Language = 'pt' | 'en';
+export type ThemeMode = 'light' | 'dark' | 'auto';
 
 export interface Transaction {
   id: string;
@@ -11,12 +16,15 @@ export interface Transaction {
 
 export interface Investment {
   id: string;
-  name: string; // Nome da acção/ETF
-  type: 'Buy' | 'Sell';
+  name: string;
+  ticker?: string;
+  isin?: string;
+  type: InvestmentAction;
   date: string;
   pricePerShare: number;
   investedValue: number;
-  shares: number; // Calculado automaticamente
+  shares: number;
+  notes?: string;
 }
 
 export interface Goal {
@@ -31,6 +39,12 @@ export interface AppConfig {
   trading212Token: string;
   currency: string;
   userName: string;
+  theme: ThemeMode;
+  language: Language;
+  showDashboardCharts: boolean;
+  dashboardChartType: ChartType;
+  showInvestmentCharts: boolean;
+  investmentChartType: ChartType;
 }
 
 export const DEFAULT_CATEGORIES = [
@@ -42,5 +56,6 @@ export const DEFAULT_CATEGORIES = [
   'Salário',
   'Investimento',
   'Poupança Automática',
+  'Transferência Entre Contas',
   'Outros'
 ];
