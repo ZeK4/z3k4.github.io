@@ -9,6 +9,22 @@ const INVESTMENT_EXPORT_HEADERS = ['Id', 'Name', 'Ticker', 'Isin', 'Type', 'Date
 // Palavras-chave internas para validação (mantidas em lowercase para lógica de comparação)
 const INV_KEYWORDS = ['ticker', 'isin', 'shares', 'price / share', 'no. of shares', 'action'];
 
+// Função auxiliar para formatar data do Excel (número serial ou string)
+const formatExcelDate = (value: any): string => {
+  if (!value) return new Date().toISOString().split('T')[0];
+  
+  if (typeof value === 'number') {
+    // Excel serial date starts from 1899-12-30 in most JS libs logic
+    const date = new Date((value - 25569) * 86400 * 1000);
+    return date.toISOString().split('T')[0];
+  }
+  
+  // Se for string, tentar limpar e pegar apenas a parte da data
+  const str = String(value).trim();
+  if (str.includes(' ')) return str.split(' ')[0];
+  return str;
+};
+
 // Funções auxiliares de mapeamento para exportação
 const mapTransactionForExport = (t: Transaction) => ({
   Id: t.id,
@@ -76,7 +92,7 @@ export const parseFile = async (file: File): Promise<Transaction[]> => {
 
   return jsonData.map(row => ({
     id: String(row['id'] || row['Id'] || Date.now().toString() + Math.random().toString().slice(2, 8)),
-    date: row['date'] || row['Date'] || row['Data do movimento'] || new Date().toISOString().split('T')[0],
+    date: formatExcelDate(row['date'] || row['Date'] || row['Data do movimento']),
     description: row['description'] || row['Description'] || row['Descrição'] || 'Sem descrição',
     amount: Math.abs(parseFloat(String(row['amount'] || row['Amount'] || row['Debito'] || row['Credito'] || 0).replace(',', '.'))),
     type: (row['type'] || row['Type'] || (row['Credito'] ? 'income' : 'expense')) as any,
@@ -105,13 +121,7 @@ export const parseInvestmentsFile = async (file: File): Promise<Investment[]> =>
   return jsonData.map(row => {
     const action = (row['type'] || row['Type'] || row['Action'] || row['action'] || 'Market buy') as InvestmentAction;
     
-    let dateStr = row['date'] || row['Date'] || row['Time'] || row['time'] || new Date().toISOString();
-    if (typeof dateStr === 'number') {
-      const d = new Date((dateStr - 25569) * 86400 * 1000);
-      dateStr = d.toISOString().split('T')[0];
-    } else {
-      dateStr = String(dateStr).split(' ')[0];
-    }
+    const dateStr = formatExcelDate(row['date'] || row['Date'] || row['Time'] || row['time']);
 
     const price = parseFloat(String(row['pricePerShare'] || row['PricePerShare'] || row['Price / share'] || row['price'] || 0).replace(',', '.'));
     const total = parseFloat(String(row['investedValue'] || row['InvestedValue'] || row['Total'] || row['total'] || 0).replace(',', '.'));

@@ -110,7 +110,21 @@ const Goals: React.FC<GoalsProps> = ({
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               <div><label className={labelClasses}>Título</label><input required type="text" className={inputClasses} value={newGoal.title || ''} onChange={e => setNewGoal({ ...newGoal, title: e.target.value })} /></div>
               <div><label className={labelClasses}>{t('total', lang)} ({currency})</label><input required type="number" step="0.01" className={inputClasses} value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} /></div>
-              <button type="submit" className="w-full py-4 bg-accent hover:bg-blue-600 text-white font-bold rounded-2xl transition-all">{t('save', lang)}</button>
+              <div className="flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                >
+                  {t('cancel', lang)}
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-[2] py-4 bg-accent hover:bg-blue-600 text-white font-bold rounded-2xl transition-all"
+                >
+                  {t('save', lang)}
+                </button>
+              </div>
             </form>
           </div>
         </div>

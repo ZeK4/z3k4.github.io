@@ -5,6 +5,23 @@ export type ChartType = 'pie' | 'bar';
 export type Language = 'pt' | 'en';
 export type ThemeMode = 'light' | 'dark' | 'auto';
 export type AlertType = 'salary' | 'investment' | 'other';
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurringSchedule {
+  id: string;
+  description: string;
+  amount: number;
+  type: TransactionType;
+  category: string;
+  frequency: RecurrenceFrequency;
+  startDate: string;
+  lastProcessedDate?: string;
+  active: boolean;
+  endCondition: 'count' | 'date';
+  occCount?: number;
+  occUntil?: string;
+  processedCount: number;
+}
 
 export interface RecurringAlert {
   id: string;
@@ -13,7 +30,7 @@ export interface RecurringAlert {
   dayOfMonth: number;
   amount?: number;
   active: boolean;
-  autoRecord: boolean; // Se deve tentar registar automaticamente ou apenas avisar
+  autoRecord: boolean;
 }
 
 export interface Transaction {
@@ -57,6 +74,7 @@ export interface AppConfig {
   showInvestmentCharts: boolean;
   investmentChartType: ChartType;
   alerts: RecurringAlert[];
+  recurringSchedules: RecurringSchedule[];
 }
 
 export const DEFAULT_CATEGORIES = [

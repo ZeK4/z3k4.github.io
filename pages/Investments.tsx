@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Investment, ChartType, InvestmentAction, Language } from '../types';
-import { t } from '../i18n';
+import { translations, t } from '../i18n';
 import { 
   Plus, Trash2, LineChart, X, Upload, Download, 
   Search, Loader2, TrendingUp, PiggyBank, CreditCard, DollarSign,
-  CheckCircle 
+  CheckCircle, Lock
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, 
@@ -28,7 +28,19 @@ interface InvestmentsProps {
 
 const COLORS = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'];
 
-// Shape ativo para o Donut
+const translateAction = (action: string, lang: Language) => {
+  const map: Record<string, keyof typeof translations.pt> = {
+    'Market buy': 'buy',
+    'Market sell': 'sell',
+    'Dividend': 'dividends',
+    'Deposit': 'deposit',
+    'Withdrawal': 'withdrawal',
+    'Interest on cash': 'interest'
+  };
+  const key = (map[action] || 'others') as keyof typeof translations.pt;
+  return t(key, lang);
+};
+
 const renderActiveShape = (props: any) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent } = props;
 
@@ -86,11 +98,12 @@ const Investments: React.FC<InvestmentsProps> = ({
     shares: 0
   });
 
-  // Cálculo automático de ações
   useEffect(() => {
     if (newInv.pricePerShare && newInv.investedValue && newInv.pricePerShare > 0) {
-      const calculatedShares = newInv.investedValue / newInv.pricePerShare;
-      setNewInv(prev => ({ ...prev, shares: parseFloat(calculatedShares.toFixed(6)) }));
+      const calculated_shares = newInv.investedValue / newInv.pricePerShare;
+      setNewInv(prev => ({ ...prev, shares: parseFloat(calculated_shares.toFixed(6)) }));
+    } else {
+      setNewInv(prev => ({ ...prev, shares: 0 }));
     }
   }, [newInv.pricePerShare, newInv.investedValue]);
 
@@ -189,7 +202,6 @@ const Investments: React.FC<InvestmentsProps> = ({
 
     return (
       <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 w-full min-h-[450px]">
-        {/* Custom Multi-column Legend */}
         <div className="w-full lg:w-auto flex-shrink-0 flex flex-col flex-wrap max-h-[400px] overflow-y-auto lg:overflow-visible gap-y-2 gap-x-6">
           {chartData.map((entry, index) => (
             <button
@@ -217,7 +229,6 @@ const Investments: React.FC<InvestmentsProps> = ({
           ))}
         </div>
 
-        {/* Chart Container - Dynamics CX pushes Pie right based on Legend size */}
         <div className="flex-1 w-full h-[400px] relative">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'pie' ? (
@@ -249,7 +260,6 @@ const Investments: React.FC<InvestmentsProps> = ({
                 </Pie>
                 <RechartsTooltip 
                   wrapperStyle={{ zIndex: 100 }}
-                  // Posição calculada para fugir do centro
                   position={{ y: 20 }}
                   contentStyle={{ 
                     borderRadius: '16px', 
@@ -322,7 +332,7 @@ const Investments: React.FC<InvestmentsProps> = ({
             <div className="bg-accent text-white p-3 rounded-2xl shadow-lg shadow-accent/20"><LineChart size={24}/></div>
             <div>
               <h3 className="text-2xl font-black text-slate-800 dark:text-white leading-none">{t('orderHistory', lang)}</h3>
-              <p className="text-xs text-slate-400 mt-1 font-medium">{investments.length} {lang === 'pt' ? 'transações registadas' : 'recorded transactions'}</p>
+              <p className="text-xs text-slate-400 mt-1 font-medium">{investments.length} {t('recordedTransactions', lang)}</p>
             </div>
           </div>
           <div className="flex gap-3 w-full lg:w-auto">
@@ -377,7 +387,7 @@ const Investments: React.FC<InvestmentsProps> = ({
                   </td>
                   <td className="px-8 py-5">
                     <span className={`px-2.5 py-1.5 text-[9px] font-black rounded-xl border uppercase tracking-wider shadow-sm ${getActionBadge(inv.type)}`}>
-                      {inv.type.replace('Market ', '')}
+                      {translateAction(inv.type, lang)}
                     </span>
                   </td>
                   <td className="px-8 py-5 text-right font-mono text-xs font-bold">{inv.pricePerShare > 0 ? inv.pricePerShare.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}</td>
@@ -406,7 +416,6 @@ const Investments: React.FC<InvestmentsProps> = ({
         </div>
       </div>
 
-      {/* Visualização de Gráficos Otimizada */}
       {showCharts && (
         <div className="bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
@@ -416,7 +425,7 @@ const Investments: React.FC<InvestmentsProps> = ({
                 {t('charts', lang)}
               </h2>
               <p className="text-2xl font-black text-slate-800 dark:text-white mt-2">
-                {lang === 'pt' ? 'Alocação por Ativo' : 'Allocation by Asset'}
+                {t('portfolioAllocation', lang)}
               </p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 px-6 py-3 rounded-2xl border border-slate-100 dark:border-slate-700">
@@ -429,7 +438,6 @@ const Investments: React.FC<InvestmentsProps> = ({
         </div>
       )}
 
-      {/* Botão Flutuante (FAB) */}
       <button 
         onClick={() => setIsModalOpen(true)}
         className="fixed bottom-24 right-6 md:bottom-12 md:right-12 bg-accent hover:bg-blue-600 text-white p-5 rounded-3xl shadow-2xl transition-all transform hover:scale-110 active:scale-90 z-[45] ring-8 ring-accent/5"
@@ -437,14 +445,13 @@ const Investments: React.FC<InvestmentsProps> = ({
         <Plus size={32} strokeWidth={3} />
       </button>
 
-      {/* Modal de Registo Refinado */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="px-10 py-8 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/10">
               <div>
                 <h3 className="text-3xl font-black text-slate-800 dark:text-white tracking-tighter">{t('newEntry', lang)}</h3>
-                <p className="text-sm text-slate-400 font-bold mt-1 uppercase tracking-tight">Registo de Transação Financeira</p>
+                <p className="text-sm text-slate-400 font-bold mt-1 uppercase tracking-tight">{t('financialRecord', lang)}</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-3 text-slate-400 hover:text-accent hover:bg-accent/5 rounded-2xl transition-all">
                 <X size={28} />
@@ -453,7 +460,7 @@ const Investments: React.FC<InvestmentsProps> = ({
             <form onSubmit={handleSubmit} className="p-10 space-y-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className={labelClasses}>{lang === 'pt' ? 'Nome do Ativo' : 'Asset Name'}</label>
+                  <label className={labelClasses}>{t('assetName', lang)}</label>
                   <input required type="text" placeholder="ex: Apple Inc" className={inputClasses} value={newInv.name || ''} onChange={e => setNewInv({ ...newInv, name: e.target.value })} />
                 </div>
                 <div>
@@ -478,22 +485,49 @@ const Investments: React.FC<InvestmentsProps> = ({
                     <input type="text" placeholder="US0378331005" className={inputClasses} value={newInv.isin || ''} onChange={e => setNewInv({ ...newInv, isin: e.target.value.toUpperCase() })} />
                  </div>
               </div>
-              <div className="grid grid-cols-3 gap-6">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                  <div>
                   <label className={labelClasses}>{t('date', lang)}</label>
                   <input required type="date" className={inputClasses} value={newInv.date} onChange={e => setNewInv({ ...newInv, date: e.target.value })} />
                  </div>
                  <div>
-                  <label className={labelClasses}>{t('total', lang)}</label>
+                  <label className={labelClasses}>{t('total', lang)} ({currency})</label>
                   <input required type="number" step="0.01" placeholder="0.00" className={inputClasses} value={newInv.investedValue || ''} onChange={e => setNewInv({ ...newInv, investedValue: parseFloat(e.target.value) })} />
                  </div>
                  <div>
                   <label className={labelClasses}>{t('price', lang)}</label>
                   <input type="number" step="0.0001" placeholder="0.00" className={inputClasses} value={newInv.pricePerShare || ''} onChange={e => setNewInv({ ...newInv, pricePerShare: parseFloat(e.target.value) })} />
                  </div>
+                 <div>
+                  <label className={labelClasses}>{t('sharesCalculated', lang)}</label>
+                  <div className="relative">
+                    <input 
+                      readOnly 
+                      type="number" 
+                      className={`${inputClasses} bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed border-dashed opacity-80`} 
+                      value={newInv.shares || 0} 
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-0.5 bg-accent/10 rounded-md">
+                       <Lock size={10} className="text-accent" />
+                       <span className="text-[10px] font-black text-accent uppercase tracking-tighter">Auto</span>
+                    </div>
+                  </div>
+                 </div>
               </div>
-              <div className="pt-6">
-                <button type="submit" className="w-full py-6 bg-accent hover:bg-blue-600 text-white font-black rounded-[2rem] transition-all shadow-2xl shadow-accent/20 flex items-center justify-center gap-3 text-lg">
+
+              <div className="flex gap-4 pt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-6 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black rounded-[2rem] hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-lg"
+                >
+                  {t('cancel', lang)}
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-[2] py-6 bg-accent hover:bg-blue-600 text-white font-black rounded-[2rem] transition-all shadow-2xl shadow-accent/20 flex items-center justify-center gap-3 text-lg"
+                >
                   <CheckCircle size={24} /> {t('save', lang)}
                 </button>
               </div>

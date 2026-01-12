@@ -76,13 +76,13 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
             onClick={() => handleChange(typeKey, 'pie')} 
             className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 text-xs font-bold transition-all ${config[typeKey] === 'pie' ? 'border-accent bg-accent/5 text-accent' : 'border-transparent bg-white dark:bg-slate-800 text-slate-400'}`}
           >
-            <PieIcon size={14} /> Pizza
+            <PieIcon size={14} /> {t('pie', lang)}
           </button>
           <button 
             onClick={() => handleChange(typeKey, 'bar')} 
             className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 text-xs font-bold transition-all ${config[typeKey] === 'bar' ? 'border-accent bg-accent/5 text-accent' : 'border-transparent bg-white dark:bg-slate-800 text-slate-400'}`}
           >
-            <BarIcon size={14} /> {lang === 'pt' ? 'Barras' : 'Bars'}
+            <BarIcon size={14} /> {t('bar', lang)}
           </button>
         </div>
       )}
@@ -96,7 +96,6 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
         <p className="text-sm text-slate-500 dark:text-slate-400">{t('manageFinances', lang)}</p>
       </div>
 
-      {/* Idioma */}
       <div className={sectionClasses}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center gap-2">
           <Globe size={18} className="text-accent" /> <h3 className="font-bold text-slate-800 dark:text-slate-200">{t('language', lang)}</h3>
@@ -109,7 +108,6 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
         </div>
       </div>
 
-      {/* Aparência */}
       <div className={sectionClasses}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center gap-2">
           <Monitor size={18} className="text-accent" /> <h3 className="font-bold text-slate-800 dark:text-slate-200">{t('appearance', lang)}</h3>
@@ -123,7 +121,6 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
         </div>
       </div>
 
-      {/* Alertas e Notificações (RECURRING TASKS) */}
       <div className={sectionClasses}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -176,7 +173,6 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
         </div>
       </div>
 
-      {/* Regras de Alocação */}
       <div className={sectionClasses}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center gap-2">
           <Percent size={18} className="text-accent" /> <h3 className="font-bold text-slate-800 dark:text-slate-200">{t('allocationRules', lang)}</h3>
@@ -184,7 +180,7 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
         <div className="p-6">
           <div className="space-y-4">
             <div className="flex justify-between items-end mb-2">
-              <label className={labelClasses}>{lang === 'pt' ? 'Percentagem por objetivo' : 'Percentage per goal'}</label>
+              <label className={labelClasses}>{t('allocationPerGoal', lang)}</label>
               <span className="text-lg font-bold text-accent">{config.allocationPercentage}%</span>
             </div>
             <input 
@@ -200,7 +196,6 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
         </div>
       </div>
 
-      {/* Gráficos e Visualizações */}
       <div className={sectionClasses}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center gap-2">
           <Settings2 size={18} className="text-accent" /> <h3 className="font-bold text-slate-800 dark:text-slate-200">{t('charts', lang)}</h3>
@@ -219,7 +214,6 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
         </div>
       </div>
 
-      {/* Perfil */}
       <div className={sectionClasses}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center gap-2">
           <User size={18} className="text-accent" /> <h3 className="font-bold text-slate-800 dark:text-slate-200">{t('userProfile', lang)}</h3>
@@ -247,7 +241,6 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
           </button>
       </div>
 
-      {/* Alert Modal */}
       {isAlertModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800">
@@ -282,9 +275,18 @@ const Settings: React.FC<SettingsProps> = ({ config, onUpdateConfig, notify, lan
                 <input type="checkbox" id="autoRecord" checked={newAlert.autoRecord} onChange={e => setNewAlert({...newAlert, autoRecord: e.target.checked})} className="w-4 h-4 accent-accent" />
                 <label htmlFor="autoRecord" className="text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer">{t('autoRecord', lang)}</label>
               </div>
-              <button type="submit" className="w-full py-4 bg-accent hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-accent/20">
-                {t('save', lang)}
-              </button>
+              <div className="flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setIsAlertModalOpen(false)}
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                >
+                  {t('cancel', lang)}
+                </button>
+                <button type="submit" className="flex-[2] py-4 bg-accent hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-accent/20">
+                  {t('save', lang)}
+                </button>
+              </div>
             </form>
           </div>
         </div>
