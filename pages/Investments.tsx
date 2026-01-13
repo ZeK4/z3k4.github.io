@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Investment, ChartType, InvestmentAction, Language } from '../types';
 import { translations, t } from '../i18n';
@@ -205,9 +206,8 @@ const Investments: React.FC<InvestmentsProps> = ({
           {chartData.map((entry, index) => (
             <button
               key={entry.name}
-              onMouseEnter={() => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left whitespace-nowrap min-w-[160px] ${
+              onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left ${
                 activeIndex === index 
                 ? 'bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700' 
                 : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 opacity-70 hover:opacity-100'
@@ -221,7 +221,7 @@ const Investments: React.FC<InvestmentsProps> = ({
                 <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[120px]">
                   {entry.name}
                 </span>
-                <span className="text-[10px] font-mono text-slate-400 font-bold">
+                <span className="text-[10px] font-mono text-slate-400">
                   {((entry.value / totalChartValue) * 100).toFixed(1)}%
                 </span>
               </div>
@@ -234,10 +234,8 @@ const Investments: React.FC<InvestmentsProps> = ({
             {chartType === 'pie' ? (
               <PieChart>
                 <Pie 
-                  {...({ 
-                    activeIndex: activeIndex ?? undefined, 
-                    activeShape: renderActiveShape 
-                  } as any)}
+                  activeIndex={activeIndex ?? undefined}
+                  activeShape={renderActiveShape}
                   data={chartData} 
                   cx="50%" 
                   cy="50%" 
@@ -262,6 +260,7 @@ const Investments: React.FC<InvestmentsProps> = ({
                 </Pie>
                 <RechartsTooltip 
                   wrapperStyle={{ zIndex: 100 }}
+                  position={{ y: 20 }}
                   contentStyle={{ 
                     borderRadius: '16px', 
                     border: 'none', 
@@ -291,23 +290,8 @@ const Investments: React.FC<InvestmentsProps> = ({
                     return [`${value.toFixed(2)} ${currency} (${percent}%)`, t('total', lang)];
                   }}
                 />
-                <Bar 
-                  dataKey="value" 
-                  radius={[8, 8, 0, 0]} 
-                  barSize={50}
-                  onMouseEnter={(_, index) => setActiveIndex(index)}
-                  onMouseLeave={() => setActiveIndex(null)}
-                >
-                  {chartData.map((_, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={COLORS[index % COLORS.length]} 
-                      style={{ 
-                        filter: activeIndex !== null && activeIndex !== index ? 'grayscale(70%) opacity(0.3)' : 'none',
-                        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-                      }}
-                    />
-                  ))}
+                <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={50}>
+                  {chartData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Bar>
               </BarChart>
             )}

@@ -9,7 +9,6 @@ import Settings from './pages/Settings';
 import { Transaction, Investment, Goal, AppConfig, RecurringSchedule } from './types';
 import { t } from './i18n';
 import { X, CheckCircle, Info } from 'lucide-react';
-import { storageService } from './services/storageService';
 
 interface Notification {
   id: string;
@@ -18,35 +17,40 @@ interface Notification {
 }
 
 const App: React.FC = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [investments, setInvestments] = useState<Investment[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [config, setConfig] = useState<AppConfig | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('transactions');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  // Carregar dados iniciais do "backend"
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [t, i, g, c] = await Promise.all([
-          storageService.getTransactions(),
-          storageService.getInvestments(),
-          storageService.getGoals(),
-          storageService.getConfig()
-        ]);
-        setTransactions(t);
-        setInvestments(i);
-        setGoals(g);
-        setConfig(c);
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-      } finally {
-        setIsLoading(false);
-      }
+  const [investments, setInvestments] = useState<Investment[]>(() => {
+    const saved = localStorage.getItem('investments');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [goals, setGoals] = useState<Goal[]>(() => {
+    const saved = localStorage.getItem('goals');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [config, setConfig] = useState<AppConfig>(() => {
+    const saved = localStorage.getItem('config');
+    return saved ? JSON.parse(saved) : {
+      allocationPercentage: 10,
+      trading212Token: '',
+      currency: '€',
+      userName: 'Investidor',
+      theme: 'auto',
+      language: 'pt',
+      showDashboardCharts: true,
+      dashboardChartType: 'pie',
+      showInvestmentCharts: true,
+      investmentChartType: 'pie',
+      alerts: [],
+      recurringSchedules: []
     };
-    loadData();
-  }, []);
+  });
+
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const addNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
@@ -56,15 +60,87 @@ const App: React.FC = () => {
     }, 5000);
   }, []);
 
-  // Sincronizar com o "backend" sempre que os dados mudarem
-  useEffect(() => { if (!isLoading) storageService.saveTransactions(transactions); }, [transactions, isLoading]);
-  useEffect(() => { if (!isLoading) storageService.saveInvestments(investments); }, [investments, isLoading]);
-  useEffect(() => { if (!isLoading) storageService.saveGoals(goals); }, [goals, isLoading]);
-  useEffect(() => { if (!isLoading && config) storageService.saveConfig(config); }, [config, isLoading]);
+  const getNetworkDate = async (): Promise<Date> => {
+    try {
+      const response = await fetch('https://worldtimeapi.org/api/ip');
+      const data = await response.json();
+      return new Date(data.datetime);
+    } catch (e) {
+      return new Date();
+    }
+  };
+
+  // Processador de Recorrência Robusto
+  useEffect(() => {
+    const processRecurring = async () => {
+      if (!config.recurringSchedules?.length) return;
+
+      const networkDate = await getNetworkDate();
+      const todayStr = networkDate.toISOString().split('T')[0];
+      let hasUpdates = false;
+      const newTransactions: Transaction[] = [];
+      
+      const updatedSchedules = config.recurringSchedules.map(schedule => {
+        if (!schedule.active) return schedule;
+
+        let currentSched = { ...schedule };
+        // Começar a partir da última data processada ou da data de início
+        let cursorDate = currentSched.lastProcessedDate ? new Date(currentSched.lastProcessedDate) : new Date(currentSched.startDate);
+        
+        while (true) {
+          let nextDate = new Date(cursorDate);
+          if (currentSched.frequency === 'daily') nextDate.setDate(nextDate.getDate() + 1);
+          else if (currentSched.frequency === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+          else if (currentSched.frequency === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+          else if (currentSched.frequency === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
+
+          const nextDateStr = nextDate.toISOString().split('T')[0];
+          
+          // Se a próxima data for no futuro, parar
+          if (nextDateStr > todayStr) break; 
+
+          // Verificar condições de fim
+          if (currentSched.endCondition === 'count' && currentSched.processedCount >= (currentSched.occCount || 999)) {
+            currentSched.active = false;
+            break;
+          }
+          if (currentSched.endCondition === 'date' && currentSched.occUntil && nextDateStr > currentSched.occUntil) {
+            currentSched.active = false;
+            break;
+          }
+
+          // Gerar a transação
+          hasUpdates = true;
+          newTransactions.push({
+            id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            date: nextDateStr,
+            description: currentSched.description,
+            amount: currentSched.amount,
+            type: currentSched.type,
+            category: currentSched.category
+          });
+
+          currentSched.processedCount++;
+          currentSched.lastProcessedDate = nextDateStr;
+          cursorDate = nextDate;
+        }
+
+        return currentSched;
+      });
+
+      if (hasUpdates) {
+        setTransactions(prev => [...prev, ...newTransactions]);
+        setConfig(prev => ({ ...prev, recurringSchedules: updatedSchedules }));
+        addNotification(config.language === 'pt' ? `${newTransactions.length} transações recorrentes processadas!` : `${newTransactions.length} recurring transactions processed!`, "success");
+      }
+    };
+
+    const timer = setTimeout(processRecurring, 2000);
+    return () => clearTimeout(timer);
+  }, [config.recurringSchedules, config.language, addNotification]);
 
   // Aplicar Tema
   useEffect(() => {
-    if (!config) return;
     const applyTheme = (mode: string) => {
       if (mode === 'dark') document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
@@ -75,19 +151,16 @@ const App: React.FC = () => {
     } else {
       applyTheme(config.theme);
     }
-  }, [config?.theme]);
+  }, [config.theme]);
 
-  if (isLoading || !config) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">FinGestor Pro Loading...</p>
-      </div>
-    );
-  }
+  // Sincronizar LocalStorage
+  useEffect(() => { localStorage.setItem('transactions', JSON.stringify(transactions)); }, [transactions]);
+  useEffect(() => { localStorage.setItem('investments', JSON.stringify(investments)); }, [investments]);
+  useEffect(() => { localStorage.setItem('goals', JSON.stringify(goals)); }, [goals]);
+  useEffect(() => { localStorage.setItem('config', JSON.stringify(config)); }, [config]);
 
   const addTransaction = (tr: Transaction) => setTransactions(prev => [...prev, tr]);
-  const addRecurringSchedule = (s: RecurringSchedule) => setConfig(prev => prev ? ({ ...prev, recurringSchedules: [...prev.recurringSchedules, s] }) : prev);
+  const addRecurringSchedule = (s: RecurringSchedule) => setConfig(prev => ({ ...prev, recurringSchedules: [...prev.recurringSchedules, s] }));
   const deleteTransaction = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
   const importTransactions = (tr: Transaction[]) => setTransactions(prev => [...prev, ...tr]);
 
@@ -101,7 +174,9 @@ const App: React.FC = () => {
   const getCurrentBalance = () => {
     const inc = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
     const exp = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-    return inc - exp;
+    const tOut = transactions.filter(t => t.type === 'transfer' && (t.category === 'Poupança Automática' || t.description.toLowerCase().includes('saída'))).reduce((acc, t) => acc + t.amount, 0);
+    const tIn = transactions.filter(t => t.type === 'transfer' && (t.category === 'Transferência Entre Contas' && !t.description.toLowerCase().includes('saída'))).reduce((acc, t) => acc + t.amount, 0);
+    return inc - exp + tIn - tOut;
   };
 
   const allocateToGoal = (goalId: string) => {
@@ -142,7 +217,7 @@ const App: React.FC = () => {
         <main className="flex-1 p-4 md:p-8 md:ml-20 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             <Routes>
-              <Route path="/" element={<Dashboard transactions={transactions} investments={investments} onAddTransaction={addTransaction} onDeleteTransaction={deleteTransaction} onImportTransactions={importTransactions} onAddRecurringSchedule={addRecurringSchedule} currency={config.currency} showCharts={config.showDashboardCharts} chartType={config.dashboardChartType} notify={addNotification} lang={config.language} />} />
+              <Route path="/" element={<Dashboard transactions={transactions} onAddTransaction={addTransaction} onDeleteTransaction={deleteTransaction} onImportTransactions={importTransactions} onAddRecurringSchedule={addRecurringSchedule} currency={config.currency} showCharts={config.showDashboardCharts} chartType={config.dashboardChartType} notify={addNotification} lang={config.language} />} />
               <Route path="/investments" element={<Investments investments={investments} onAddInvestment={addInvestment} onDeleteInvestment={deleteInvestment} onImportInvestments={importInvestments} currency={config.currency} showCharts={config.showInvestmentCharts} chartType={config.investmentChartType} lang={config.language} notify={addNotification} />} />
               <Route path="/goals" element={<Goals goals={goals} onAddGoal={addGoal} onDeleteGoal={deleteGoal} onAllocate={allocateToGoal} allocationPercentage={config.allocationPercentage} currentBalance={getCurrentBalance()} savingsBalance={getSavingsBalance()} currency={config.currency} lang={config.language} />} />
               <Route path="/settings" element={<Settings config={config} onUpdateConfig={setConfig} notify={addNotification} lang={config.language} />} />
